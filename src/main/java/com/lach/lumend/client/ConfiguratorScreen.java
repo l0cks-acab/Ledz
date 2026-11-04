@@ -21,7 +21,7 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 public class ConfiguratorScreen extends Screen {
-    private static final int W = 232, H = 208;
+    private static final int W = 232, H = 230;
     private static final int PANEL = 0xF0101418, BORDER = 0xFF3A4652, LABEL = 0xFFB8C4CC;
 
     private final InteractionHand hand;
@@ -82,6 +82,8 @@ public class ConfiguratorScreen extends Screen {
                 bt -> { cfg = cfg.withRedstone((cfg.redstone() + 1) % LedConfig.RS_MODES); rebuildWidgets(); }).bounds(x, y0 + 146, half, 18).build());
         addRenderableWidget(Button.builder(Component.translatable(cfg.reverse() ? "gui.lumend.reverse.on" : "gui.lumend.reverse.off"),
                 bt -> { cfg = cfg.withReverse(!cfg.reverse()); rebuildWidgets(); }).bounds(x + half + 4, y0 + 146, half, 18).build());
+
+        addRenderableWidget(new IntSlider(x, y0 + 168, half * 2 + 4, 18, "gui.lumend.wash", 0, 100, cfg.wash(), v -> cfg = cfg.withWash(v)));
 
         addRenderableWidget(Button.builder(Component.translatable("gui.done"), bt -> save()).bounds(x, y0 + H - 26, half, 18).build());
         addRenderableWidget(Button.builder(Component.translatable("gui.cancel"), bt -> onClose()).bounds(x + half + 4, y0 + H - 26, half, 18).build());
@@ -174,7 +176,7 @@ public class ConfiguratorScreen extends Screen {
             gg.fill(qx - 1, qy - 1, qx + 13, qy + 13, hover ? 0xFFFFFFFF : BORDER);
             gg.fill(qx, qy, qx + 12, qy + 12, 0xFF000000 | (dyes[k].getTextureDiffuseColor() & 0xFFFFFF));
         }
-        gg.text(font, Component.translatable("gui.lumend.hint"), x0 + 8, y0 + 168, LABEL, false);
+        gg.text(font, Component.translatable("gui.lumend.hint"), x0 + 8, y0 + 192, LABEL, false);
     }
 
     @Override

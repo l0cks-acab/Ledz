@@ -10,6 +10,8 @@ import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Sheets;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
@@ -33,6 +35,7 @@ public class LedRenderer implements BlockEntityRenderer<LedStripBlockEntity, Led
 
     public static class State extends BlockEntityRenderState {
         List<Strip> strips = List.of();
+        List<Wash.Vertex> wash = List.of();
     }
 
     public LedRenderer(BlockEntityRendererProvider.Context ctx) {}
@@ -48,6 +51,7 @@ public class LedRenderer implements BlockEntityRenderer<LedStripBlockEntity, Led
         BlockEntityRenderer.super.extractRenderState(be, state, partialTicks, camera, breakProgress);
         Level level = be.getLevel();
         List<Strip> out = new ArrayList<>();
+        List<Wash.Vertex> wash = new ArrayList<>();
         if (level != null) {
             double secs = (level.getGameTime() % 2_400_000L + partialTicks) / 20.0;
             for (int i = 0; i < Placement.COUNT; i++) {
@@ -61,10 +65,12 @@ public class LedRenderer implements BlockEntityRenderer<LedStripBlockEntity, Led
                     double u = k / (double) SEGMENTS;
                     colors[k] = lit ? LedConfig.scale(cfg.color(t[0] + (t[1] - t[0]) * u, secs), 0.15f + 0.85f * f) : OFF_COLOR;
                 }
+                if (lit && cfg.wash() > 0) Wash.build(level, be.getBlockPos(), i, colors, cfg.wash() / 100f * f, wash);
                 out.add(new Strip(Placement.box(i, 0), Placement.box(i, GLOW), Placement.axis(i).ordinal(), colors, lit, Math.round(90 * f)));
             }
         }
         state.strips = out;
+        state.wash = wash;
     }
 
     @Override
@@ -79,10 +85,27 @@ public class LedRenderer implements BlockEntityRenderer<LedStripBlockEntity, Led
             for (Strip s : strips)
                 box(vc, pose, sprite, s.box(), s.axis(), s.colors(), 255, s.lit() ? LightCoordsUtil.FULL_BRIGHT : light);
         });
+        List<Wash.Vertex> wash = state.wash;
+        if (!wash.isEmpty())
+            out.submitCustomGeometry(ps, RenderTypes.lightning(), (pose, vc) -> {
+                for (int q = 0; q < wash.size(); q += 4) {
+                    for (int v = 0; v < 4; v++) washVertex(vc, pose, wash.get(q + v));
+                    for (int v = 3; v >= 0; v--) washVertex(vc, pose, wash.get(q + v));
+                }
+            });
         out.submitCustomGeometry(ps, Sheets.translucentBlockItemSheet(), (pose, vc) -> {
             for (Strip s : strips)
                 if (s.lit()) box(vc, pose, glowSprite, s.glowBox(), s.axis(), s.colors(), s.glowAlpha(), LightCoordsUtil.FULL_BRIGHT);
         });
+    }
+
+    private static void washVertex(VertexConsumer vc, PoseStack.Pose pose, Wash.Vertex v) {
+        vc.addVertex(pose, v.x(), v.y(), v.z()).setColor((v.rgb() >> 16) & 255, (v.rgb() >> 8) & 255, v.rgb() & 255, v.alpha());
+    }
+
+    @Override
+    public AABB getRenderBoundingBox(LedStripBlockEntity be) {
+        return new AABB(be.getBlockPos()).inflate(Wash.REACH + 0.5);
     }
 
     /** Box with per-vertex colour along the strip axis. */

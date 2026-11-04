@@ -12,13 +12,13 @@ import net.minecraft.util.Mth;
 /**
  * Strip look: 2-4 colour stops, animation mode, speed, brightness, direction, light level and redstone behaviour.
  */
-public record LedConfig(List<Integer> stops, int mode, int speed, int brightness, boolean reverse, int light, int redstone) {
+public record LedConfig(List<Integer> stops, int mode, int speed, int brightness, boolean reverse, int light, int redstone, int wash) {
     public static final int STATIC = 0, SCROLL = 1, PULSE = 2, RAINBOW = 3, MODES = 4;
     public static final int RS_IGNORE = 0, RS_ON = 1, RS_OFF = 2, RS_DIM = 3, RS_MODES = 4;
     public static final int MIN_STOPS = 2, MAX_STOPS = 4;
 
-    public static final LedConfig STRIP_DEFAULT = new LedConfig(List.of(0xFFF4E0, 0xFFF4E0), STATIC, 5, 100, false, 0, RS_IGNORE);
-    public static final LedConfig CONFIGURATOR_DEFAULT = new LedConfig(List.of(0x1E5BFF, 0x19E6A0), STATIC, 5, 100, false, 0, RS_IGNORE);
+    public static final LedConfig STRIP_DEFAULT = new LedConfig(List.of(0xFFF4E0, 0xFFF4E0), STATIC, 5, 100, false, 0, RS_IGNORE, 0);
+    public static final LedConfig CONFIGURATOR_DEFAULT = new LedConfig(List.of(0x1E5BFF, 0x19E6A0), STATIC, 5, 100, false, 0, RS_IGNORE, 0);
 
     public static final Codec<LedConfig> CODEC = RecordCodecBuilder.<LedConfig>create(i -> i.group(
             Codec.INT.listOf().fieldOf("stops").forGetter(LedConfig::stops),
@@ -27,7 +27,8 @@ public record LedConfig(List<Integer> stops, int mode, int speed, int brightness
             Codec.INT.optionalFieldOf("brightness", 100).forGetter(LedConfig::brightness),
             Codec.BOOL.optionalFieldOf("reverse", false).forGetter(LedConfig::reverse),
             Codec.INT.optionalFieldOf("light", 0).forGetter(LedConfig::light),
-            Codec.INT.optionalFieldOf("redstone", RS_IGNORE).forGetter(LedConfig::redstone)
+            Codec.INT.optionalFieldOf("redstone", RS_IGNORE).forGetter(LedConfig::redstone),
+            Codec.INT.optionalFieldOf("wash", 0).forGetter(LedConfig::wash)
     ).apply(i, LedConfig::new)).xmap(LedConfig::sanitized, c -> c);
 
     public static final StreamCodec<ByteBuf, LedConfig> STREAM_CODEC = StreamCodec.of(
@@ -40,12 +41,13 @@ public record LedConfig(List<Integer> stops, int mode, int speed, int brightness
                 buf.writeBoolean(c.reverse);
                 buf.writeByte(c.light);
                 buf.writeByte(c.redstone);
+                buf.writeByte(c.wash);
             },
             buf -> {
                 int n = Math.min(ByteBufCodecs.VAR_INT.decode(buf), MAX_STOPS);
                 List<Integer> stops = new ArrayList<>();
                 for (int k = 0; k < n; k++) stops.add(ByteBufCodecs.INT.decode(buf));
-                return new LedConfig(stops, buf.readByte(), buf.readByte(), buf.readByte(), buf.readBoolean(), buf.readByte(), buf.readByte()).sanitized();
+                return new LedConfig(stops, buf.readByte(), buf.readByte(), buf.readByte(), buf.readBoolean(), buf.readByte(), buf.readByte(), buf.readByte()).sanitized();
             });
 
     public LedConfig sanitized() {
@@ -53,16 +55,18 @@ public record LedConfig(List<Integer> stops, int mode, int speed, int brightness
         for (int c : stops) if (s.size() < MAX_STOPS) s.add(c & 0xFFFFFF);
         while (s.size() < MIN_STOPS) s.add(s.isEmpty() ? 0xFFFFFF : s.get(s.size() - 1));
         return new LedConfig(List.copyOf(s), Mth.clamp(mode, 0, MODES - 1), Mth.clamp(speed, 1, 20),
-                Mth.clamp(brightness, 0, 100), reverse, Mth.clamp(light, 0, 15), Mth.clamp(redstone, 0, RS_MODES - 1));
+                Mth.clamp(brightness, 0, 100), reverse, Mth.clamp(light, 0, 15), Mth.clamp(redstone, 0, RS_MODES - 1), Mth.clamp(wash, 0, 100));
     }
 
-    public LedConfig withStops(List<Integer> s) { return new LedConfig(s, mode, speed, brightness, reverse, light, redstone); }
-    public LedConfig withMode(int v) { return new LedConfig(stops, v, speed, brightness, reverse, light, redstone); }
-    public LedConfig withSpeed(int v) { return new LedConfig(stops, mode, v, brightness, reverse, light, redstone); }
-    public LedConfig withBrightness(int v) { return new LedConfig(stops, mode, speed, v, reverse, light, redstone); }
-    public LedConfig withReverse(boolean v) { return new LedConfig(stops, mode, speed, brightness, v, light, redstone); }
-    public LedConfig withLight(int v) { return new LedConfig(stops, mode, speed, brightness, reverse, v, redstone); }
-    public LedConfig withRedstone(int v) { return new LedConfig(stops, mode, speed, brightness, reverse, light, v); }
+    public LedConfig withStops(List<Integer> s) { return new LedConfig(s, mode, speed, brightness, reverse, light, redstone, wash); }
+    public LedConfig withMode(int v) { return new LedConfig(stops, v, speed, brightness, reverse, light, redstone, wash); }
+    public LedConfig withSpeed(int v) { return new LedConfig(stops, mode, v, brightness, reverse, light, redstone, wash); }
+    public LedConfig withBrightness(int v) { return new LedConfig(stops, mode, speed, v, reverse, light, redstone, wash); }
+    public LedConfig withReverse(boolean v) { return new LedConfig(stops, mode, speed, brightness, v, light, redstone, wash); }
+    public LedConfig withLight(int v) { return new LedConfig(stops, mode, speed, brightness, reverse, v, redstone, wash); }
+    public LedConfig withRedstone(int v) { return new LedConfig(stops, mode, speed, brightness, reverse, light, v, wash); }
+
+    public LedConfig withWash(int v) { return new LedConfig(stops, mode, speed, brightness, reverse, light, redstone, v); }
 
     /** 0..1 output factor for a redstone signal. */
     public float redstoneFactor(int power) {
