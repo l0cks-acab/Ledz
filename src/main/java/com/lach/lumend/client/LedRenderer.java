@@ -1,0 +1,98 @@
+package com.lach.lumend.client;
+
+import com.lach.lumend.LedConfig;
+import com.lach.lumend.LedStripBlockEntity;
+import com.lach.lumend.Lumend;
+import com.lach.lumend.Placement;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import java.util.function.DoubleToIntFunction;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.world.level.Level;
+
+public class LedRenderer implements BlockEntityRenderer<LedStripBlockEntity> {
+    private static final int SEGMENTS = 8;
+    private static final int OFF_COLOR = 0x2A2C30;
+    private static final float GLOW = 1.1f / 16f;
+
+    public LedRenderer(BlockEntityRendererProvider.Context ctx) {}
+
+    @Override
+    public void render(LedStripBlockEntity be, float partialTick, PoseStack ps, MultiBufferSource buffers, int light, int overlay) {
+        Level level = be.getLevel();
+        if (level == null || be.mask() == 0) return;
+        double secs = (level.getGameTime() % 2_400_000L + partialTick) / 20.0;
+        TextureAtlasSprite sprite = Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(Lumend.id("block/led"));
+        TextureAtlasSprite glowSprite = Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(Lumend.id("block/led_glow"));
+        VertexConsumer solid = buffers.getBuffer(RenderType.solid());
+        PoseStack.Pose pose = ps.last();
+        boolean[] lit = new boolean[Placement.COUNT];
+        DoubleToIntFunction[] colors = new DoubleToIntFunction[Placement.COUNT];
+        for (int i = 0; i < Placement.COUNT; i++) {
+            if (!be.has(i)) continue;
+            LedConfig cfg = be.config(i);
+            float[] t = LedRuns.get(level, be.getBlockPos(), i);
+            float f = cfg.redstoneFactor(be.power()) * cfg.brightness() / 100f;
+            lit[i] = f > 0.02f;
+            colors[i] = lit[i] ? u -> LedConfig.scale(cfg.color(t[0] + (t[1] - t[0]) * u, secs), 0.15f + 0.85f * f) : u -> OFF_COLOR;
+            box(solid, pose, sprite, Placement.box(i, 0), Placement.axis(i).ordinal(), colors[i], 255,
+                    lit[i] ? LightTexture.FULL_BRIGHT : light);
+        }
+        VertexConsumer glow = buffers.getBuffer(RenderType.translucent());
+        for (int i = 0; i < Placement.COUNT; i++) {
+            if (!lit[i]) continue;
+            int a = Math.round(90 * be.config(i).brightness() / 100f * be.config(i).redstoneFactor(be.power()));
+            box(glow, pose, glowSprite, Placement.box(i, GLOW), Placement.axis(i).ordinal(), colors[i], a, LightTexture.FULL_BRIGHT);
+        }
+    }
+
+    @Override
+    public boolean shouldRenderOffScreen(LedStripBlockEntity be) {
+        return false;
+    }
+
+    /** Box with per-vertex colour along the strip axis. */
+    private static void box(VertexConsumer vc, PoseStack.Pose pose, TextureAtlasSprite s, float[] b, int axis,
+                            DoubleToIntFunction color, int alpha, int light) {
+        for (int k = 0; k < 3; k++) {
+            int p = (k + 1) % 3, q = (k + 2) % 3;
+            for (int sign = -1; sign <= 1; sign += 2) {
+                float c = sign > 0 ? b[k + 3] : b[k];
+                int segP = p == axis ? SEGMENTS : 1, segQ = q == axis ? SEGMENTS : 1;
+                for (int sp = 0; sp < segP; sp++)
+                    for (int sq = 0; sq < segQ; sq++) {
+                        float p0 = lerp(b[p], b[p + 3], sp / (float) segP), p1 = lerp(b[p], b[p + 3], (sp + 1) / (float) segP);
+                        float q0 = lerp(b[q], b[q + 3], sq / (float) segQ), q1 = lerp(b[q], b[q + 3], (sq + 1) / (float) segQ);
+                        float[][] pq = sign > 0
+                                ? new float[][]{{p0, q0}, {p1, q0}, {p1, q1}, {p0, q1}}
+                                : new float[][]{{p0, q0}, {p0, q1}, {p1, q1}, {p1, q0}};
+                        for (float[] v : pq) {
+                            float[] xyz = new float[3];
+                            xyz[k] = c;
+                            xyz[p] = v[0];
+                            xyz[q] = v[1];
+                            int rgb = color.applyAsInt(xyz[axis]);
+                            float[] n = new float[3];
+                            n[k] = sign;
+                            vc.addVertex(pose, xyz[0], xyz[1], xyz[2])
+                                    .setColor((rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255, alpha)
+                                    .setUv(s.getU(v[0]), s.getV(v[1]))
+                                    .setLight(light)
+                                    .setNormal(pose, n[0], n[1], n[2]);
+                        }
+                    }
+            }
+        }
+    }
+
+    private static float lerp(float a, float b, float t) {
+        return a + (b - a) * t;
+    }
+}
