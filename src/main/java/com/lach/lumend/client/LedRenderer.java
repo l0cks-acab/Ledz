@@ -6,7 +6,10 @@ import com.lach.lumend.Lumend;
 import com.lach.lumend.Placement;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.DoubleToIntFunction;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -45,6 +48,21 @@ public class LedRenderer implements BlockEntityRenderer<LedStripBlockEntity> {
             box(solid, pose, sprite, Placement.box(i, 0), Placement.axis(i).ordinal(), colors[i], 255,
                     lit[i] ? LightTexture.FULL_BRIGHT : light);
         }
+        List<Wash.Vertex> wash = new ArrayList<>();
+        for (int i = 0; i < Placement.COUNT; i++) {
+            if (!lit[i] || be.config(i).wash() == 0) continue;
+            int[] samples = new int[SEGMENTS + 1];
+            for (int k = 0; k <= SEGMENTS; k++) samples[k] = colors[i].applyAsInt(k / (double) SEGMENTS);
+            float f = be.config(i).redstoneFactor(be.power()) * be.config(i).brightness() / 100f;
+            Wash.build(level, be.getBlockPos(), i, samples, be.config(i).wash() / 100f * f, wash);
+        }
+        if (!wash.isEmpty()) {
+            VertexConsumer add = buffers.getBuffer(RenderType.lightning());
+            for (int q = 0; q < wash.size(); q += 4) {
+                for (int v = 0; v < 4; v++) washVertex(add, pose, wash.get(q + v));
+                for (int v = 3; v >= 0; v--) washVertex(add, pose, wash.get(q + v));
+            }
+        }
         VertexConsumer glow = buffers.getBuffer(RenderType.translucent());
         for (int i = 0; i < Placement.COUNT; i++) {
             if (!lit[i]) continue;
@@ -53,9 +71,18 @@ public class LedRenderer implements BlockEntityRenderer<LedStripBlockEntity> {
         }
     }
 
+    private static void washVertex(VertexConsumer vc, PoseStack.Pose pose, Wash.Vertex v) {
+        vc.addVertex(pose, v.x(), v.y(), v.z()).setColor((v.rgb() >> 16) & 255, (v.rgb() >> 8) & 255, v.rgb() & 255, v.alpha());
+    }
+
     @Override
     public boolean shouldRenderOffScreen(LedStripBlockEntity be) {
         return false;
+    }
+
+    @Override
+    public AABB getRenderBoundingBox(LedStripBlockEntity be) {
+        return new AABB(be.getBlockPos()).inflate(Wash.REACH + 0.5);
     }
 
     /** Box with per-vertex colour along the strip axis. */

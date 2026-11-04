@@ -13,6 +13,7 @@ NeoForge mod. Stick LED strips on block edges and paint them with gradients usin
 - **Use on a strip**: apply to its run. **Sneak-use**: copy that strip's look.
 - Modes: Static, Scroll, Pulse, Rainbow. Speed, brightness, reverse.
 - Light: 0-15 real block light.
+- Colour wash: 0-100%. Tints nearby walls, floors and ceilings with the strip colour, fading out over 2.5 blocks (vanilla light is colourless, this fakes it).
 - Redstone: ignore, on when powered, off when powered, or brightness by signal strength.
 
 ## Recipes

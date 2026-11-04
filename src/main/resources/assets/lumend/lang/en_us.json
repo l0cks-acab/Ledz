@@ -22,6 +22,7 @@
   "gui.lumend.redstone.3": "By signal strength",
   "gui.lumend.reverse.on": "Direction: Reversed",
   "gui.lumend.reverse.off": "Direction: Normal",
+  "gui.lumend.wash": "Colour wash: %s%%",
   "gui.lumend.hint": "Click a stop to edit, or pick a dye colour.",
   "msg.lumend.applied": "Applied to %s strips",
   "msg.lumend.copied": "Copied strip config",
