@@ -6,61 +6,88 @@ import com.lach.lumend.Lumend;
 import com.lach.lumend.Placement;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import java.util.function.DoubleToIntFunction;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.Sheets;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.data.AtlasIds;
+import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
-public class LedRenderer implements BlockEntityRenderer<LedStripBlockEntity> {
+public class LedRenderer implements BlockEntityRenderer<LedStripBlockEntity, LedRenderer.State> {
     private static final int SEGMENTS = 8;
     private static final int OFF_COLOR = 0x2A2C30;
     private static final float GLOW = 1.1f / 16f;
 
+    record Strip(float[] box, float[] glowBox, int axis, int[] colors, boolean lit, int glowAlpha) {}
+
+    public static class State extends BlockEntityRenderState {
+        List<Strip> strips = List.of();
+    }
+
     public LedRenderer(BlockEntityRendererProvider.Context ctx) {}
 
     @Override
-    public void render(LedStripBlockEntity be, float partialTick, PoseStack ps, MultiBufferSource buffers, int light, int overlay) {
-        Level level = be.getLevel();
-        if (level == null || be.mask() == 0) return;
-        double secs = (level.getGameTime() % 2_400_000L + partialTick) / 20.0;
-        TextureAtlasSprite sprite = Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(Lumend.id("block/led"));
-        TextureAtlasSprite glowSprite = Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(Lumend.id("block/led_glow"));
-        VertexConsumer solid = buffers.getBuffer(RenderType.solid());
-        PoseStack.Pose pose = ps.last();
-        boolean[] lit = new boolean[Placement.COUNT];
-        DoubleToIntFunction[] colors = new DoubleToIntFunction[Placement.COUNT];
-        for (int i = 0; i < Placement.COUNT; i++) {
-            if (!be.has(i)) continue;
-            LedConfig cfg = be.config(i);
-            float[] t = LedRuns.get(level, be.getBlockPos(), i);
-            float f = cfg.redstoneFactor(be.power()) * cfg.brightness() / 100f;
-            lit[i] = f > 0.02f;
-            colors[i] = lit[i] ? u -> LedConfig.scale(cfg.color(t[0] + (t[1] - t[0]) * u, secs), 0.15f + 0.85f * f) : u -> OFF_COLOR;
-            box(solid, pose, sprite, Placement.box(i, 0), Placement.axis(i).ordinal(), colors[i], 255,
-                    lit[i] ? LightTexture.FULL_BRIGHT : light);
-        }
-        VertexConsumer glow = buffers.getBuffer(RenderType.translucent());
-        for (int i = 0; i < Placement.COUNT; i++) {
-            if (!lit[i]) continue;
-            int a = Math.round(90 * be.config(i).brightness() / 100f * be.config(i).redstoneFactor(be.power()));
-            box(glow, pose, glowSprite, Placement.box(i, GLOW), Placement.axis(i).ordinal(), colors[i], a, LightTexture.FULL_BRIGHT);
-        }
+    public State createRenderState() {
+        return new State();
     }
 
     @Override
-    public boolean shouldRenderOffScreen(LedStripBlockEntity be) {
-        return false;
+    public void extractRenderState(LedStripBlockEntity be, State state, float partialTicks, Vec3 camera,
+                                   ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
+        BlockEntityRenderer.super.extractRenderState(be, state, partialTicks, camera, breakProgress);
+        Level level = be.getLevel();
+        List<Strip> out = new ArrayList<>();
+        if (level != null) {
+            double secs = (level.getGameTime() % 2_400_000L + partialTicks) / 20.0;
+            for (int i = 0; i < Placement.COUNT; i++) {
+                if (!be.has(i)) continue;
+                LedConfig cfg = be.config(i);
+                float[] t = LedRuns.get(level, be.getBlockPos(), i);
+                float f = cfg.redstoneFactor(be.power()) * cfg.brightness() / 100f;
+                boolean lit = f > 0.02f;
+                int[] colors = new int[SEGMENTS + 1];
+                for (int k = 0; k <= SEGMENTS; k++) {
+                    double u = k / (double) SEGMENTS;
+                    colors[k] = lit ? LedConfig.scale(cfg.color(t[0] + (t[1] - t[0]) * u, secs), 0.15f + 0.85f * f) : OFF_COLOR;
+                }
+                out.add(new Strip(Placement.box(i, 0), Placement.box(i, GLOW), Placement.axis(i).ordinal(), colors, lit, Math.round(90 * f)));
+            }
+        }
+        state.strips = out;
+    }
+
+    @Override
+    public void submit(State state, PoseStack ps, SubmitNodeCollector out, CameraRenderState camera) {
+        if (state.strips.isEmpty()) return;
+        var atlas = Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS);
+        TextureAtlasSprite sprite = atlas.getSprite(Lumend.id("block/led"));
+        TextureAtlasSprite glowSprite = atlas.getSprite(Lumend.id("block/led_glow"));
+        int light = state.lightCoords;
+        List<Strip> strips = state.strips;
+        out.submitCustomGeometry(ps, Sheets.cutoutBlockSheet(), (pose, vc) -> {
+            for (Strip s : strips)
+                box(vc, pose, sprite, s.box(), s.axis(), s.colors(), 255, s.lit() ? LightCoordsUtil.FULL_BRIGHT : light);
+        });
+        out.submitCustomGeometry(ps, Sheets.translucentBlockItemSheet(), (pose, vc) -> {
+            for (Strip s : strips)
+                if (s.lit()) box(vc, pose, glowSprite, s.glowBox(), s.axis(), s.colors(), s.glowAlpha(), LightCoordsUtil.FULL_BRIGHT);
+        });
     }
 
     /** Box with per-vertex colour along the strip axis. */
     private static void box(VertexConsumer vc, PoseStack.Pose pose, TextureAtlasSprite s, float[] b, int axis,
-                            DoubleToIntFunction color, int alpha, int light) {
+                            int[] colors, int alpha, int light) {
         for (int k = 0; k < 3; k++) {
             int p = (k + 1) % 3, q = (k + 2) % 3;
             for (int sign = -1; sign <= 1; sign += 2) {
@@ -78,12 +105,13 @@ public class LedRenderer implements BlockEntityRenderer<LedStripBlockEntity> {
                             xyz[k] = c;
                             xyz[p] = v[0];
                             xyz[q] = v[1];
-                            int rgb = color.applyAsInt(xyz[axis]);
+                            int rgb = colors[Math.round(xyz[axis] * SEGMENTS)];
                             float[] n = new float[3];
                             n[k] = sign;
                             vc.addVertex(pose, xyz[0], xyz[1], xyz[2])
                                     .setColor((rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255, alpha)
                                     .setUv(s.getU(v[0]), s.getV(v[1]))
+                                    .setOverlay(OverlayTexture.NO_OVERLAY)
                                     .setLight(light)
                                     .setNormal(pose, n[0], n[1], n[2]);
                         }

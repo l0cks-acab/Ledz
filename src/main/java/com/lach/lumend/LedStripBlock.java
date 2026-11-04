@@ -1,7 +1,12 @@
 package com.lach.lumend;
 
 import com.mojang.serialization.MapCodec;
+import java.util.List;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.redstone.Orientation;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
+import org.jetbrains.annotations.Nullable;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.sounds.SoundEvents;
@@ -32,9 +37,10 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 public class LedStripBlock extends BaseEntityBlock {
     public static final MapCodec<LedStripBlock> CODEC = simpleCodec(LedStripBlock::new);
     public static final IntegerProperty LIGHT = IntegerProperty.create("light", 0, 15);
-    public static final BlockBehaviour.Properties PROPERTIES = BlockBehaviour.Properties.of()
-            .noCollission().noOcclusion().strength(0.2f).sound(SoundType.GLASS)
+    static BlockBehaviour.Properties properties(BlockBehaviour.Properties p) {
+        return p.noCollision().noOcclusion().strength(0.2f).sound(SoundType.GLASS)
             .pushReaction(PushReaction.DESTROY).lightLevel(s -> s.getValue(LIGHT));
+    }
 
     public LedStripBlock(Properties props) {
         super(props);
@@ -65,10 +71,10 @@ public class LedStripBlock extends BaseEntityBlock {
     }
 
     @Override
-    protected boolean propagatesSkylightDown(BlockState state, BlockGetter level, BlockPos pos) { return true; }
+    protected boolean propagatesSkylightDown(BlockState state) { return true; }
 
     @Override
-    public ItemStack getCloneItemStack(LevelReader level, BlockPos pos, BlockState state) {
+    protected ItemStack getCloneItemStack(LevelReader level, BlockPos pos, BlockState state, boolean includeData) {
         return new ItemStack(Lumend.LED_STRIP.get());
     }
 
@@ -80,27 +86,26 @@ public class LedStripBlock extends BaseEntityBlock {
     }
 
     @Override
-    public boolean onDestroyedByPlayer(BlockState state, Level level, BlockPos pos, Player player, boolean willHarvest, FluidState fluid) {
+    public boolean onDestroyedByPlayer(BlockState state, Level level, BlockPos pos, Player player, ItemStack toolStack, boolean willHarvest, FluidState fluid) {
         if (level.getBlockEntity(pos) instanceof LedStripBlockEntity be) {
             if (be.count() > 1) {
                 int i = targeted(player, pos, be.mask());
-                if (i >= 0 && !level.isClientSide) {
+                if (i >= 0 && !level.isClientSide()) {
                     be.remove(i);
                     if (!player.getAbilities().instabuild) popResource(level, pos, new ItemStack(Lumend.LED_STRIP.get()));
                     level.playSound(null, pos, SoundEvents.GLASS_BREAK, SoundSource.BLOCKS, 0.6f, 1.6f);
                 }
                 return false;
             }
-            if (player.getAbilities().instabuild && !level.isClientSide) be.clear();
         }
-        return super.onDestroyedByPlayer(state, level, pos, player, willHarvest, fluid);
+        return super.onDestroyedByPlayer(state, level, pos, player, toolStack, willHarvest, fluid);
     }
 
     @Override
-    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean moved) {
-        if (!state.is(newState.getBlock()) && level.getBlockEntity(pos) instanceof LedStripBlockEntity be && be.count() > 0)
-            popResource(level, pos, new ItemStack(Lumend.LED_STRIP.get(), be.count()));
-        super.onRemove(state, level, pos, newState, moved);
+    protected List<ItemStack> getDrops(BlockState state, LootParams.Builder params) {
+        if (params.getOptionalParameter(LootContextParams.BLOCK_ENTITY) instanceof LedStripBlockEntity be && be.count() > 0)
+            return List.of(new ItemStack(Lumend.LED_STRIP.get(), be.count()));
+        return List.of();
     }
 
     @Override
@@ -113,9 +118,9 @@ public class LedStripBlock extends BaseEntityBlock {
     }
 
     @Override
-    protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block block, BlockPos from, boolean moving) {
-        super.neighborChanged(state, level, pos, block, from, moving);
-        if (level.isClientSide || !(level.getBlockEntity(pos) instanceof LedStripBlockEntity be)) return;
+    protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block block, @Nullable Orientation orientation, boolean moving) {
+        super.neighborChanged(state, level, pos, block, orientation, moving);
+        if (level.isClientSide() || !(level.getBlockEntity(pos) instanceof LedStripBlockEntity be)) return;
         int dropped = be.refresh();
         if (dropped > 0) popResource(level, pos, new ItemStack(Lumend.LED_STRIP.get(), dropped));
         if (be.mask() == 0) level.removeBlock(pos, false);

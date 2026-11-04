@@ -4,7 +4,11 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtOps;
+import com.mojang.serialization.Codec;
+import java.util.HashMap;
+import java.util.Map;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
@@ -15,6 +19,8 @@ import net.minecraft.world.level.block.state.BlockState;
 public class LedStripBlockEntity extends BlockEntity {
     /** Bumped whenever any strip changes, so client run caches know to rebuild. */
     public static volatile int VERSION;
+
+    private static final Codec<Map<String, LedConfig>> STRIPS = Codec.unboundedMap(Codec.STRING, LedConfig.CODEC);
 
     private int mask;
     private int power;
@@ -55,7 +61,7 @@ public class LedStripBlockEntity extends BlockEntity {
 
     /** Server: re-read redstone and drop strips that lost support. Returns strips dropped. */
     public int refresh() {
-        if (level == null || level.isClientSide) return 0;
+        if (level == null || level.isClientSide()) return 0;
         int dropped = 0;
         for (int i = 0; i < Placement.COUNT; i++) {
             if (!has(i)) continue;
@@ -76,7 +82,7 @@ public class LedStripBlockEntity extends BlockEntity {
     }
 
     private void updateLight() {
-        if (level == null || level.isClientSide) return;
+        if (level == null || level.isClientSide()) return;
         int l = 0;
         for (int i = 0; i < Placement.COUNT; i++) if (has(i)) l = Math.max(l, config(i).lightFor(power));
         BlockState st = getBlockState();
@@ -87,47 +93,36 @@ public class LedStripBlockEntity extends BlockEntity {
     private void changed() {
         VERSION++;
         setChanged();
-        if (level != null && !level.isClientSide) {
+        if (level != null && !level.isClientSide()) {
             updateLight();
             level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_ALL);
         }
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
-        tag.putInt("mask", mask);
-        tag.putInt("power", power);
-        CompoundTag c = new CompoundTag();
-        for (int i = 0; i < Placement.COUNT; i++)
-            if (has(i)) {
-                int k = i;
-                LedConfig.CODEC.encodeStart(NbtOps.INSTANCE, config(i)).ifSuccess(t -> c.put(Integer.toString(k), t));
-            }
-        tag.put("strips", c);
+    protected void saveAdditional(ValueOutput out) {
+        super.saveAdditional(out);
+        out.putInt("mask", mask);
+        out.putInt("power", power);
+        Map<String, LedConfig> m = new HashMap<>();
+        for (int i = 0; i < Placement.COUNT; i++) if (has(i)) m.put(Integer.toString(i), config(i));
+        out.store("strips", STRIPS, m);
     }
 
     @Override
-    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.loadAdditional(tag, registries);
-        mask = tag.getInt("mask");
-        power = tag.getInt("power");
-        CompoundTag c = tag.getCompound("strips");
-        for (int i = 0; i < Placement.COUNT; i++) {
-            configs[i] = null;
-            String k = Integer.toString(i);
-            if (has(i) && c.contains(k)) {
-                int idx = i;
-                LedConfig.CODEC.parse(NbtOps.INSTANCE, c.get(k)).ifSuccess(cfg -> configs[idx] = cfg);
-            }
-        }
+    protected void loadAdditional(ValueInput in) {
+        super.loadAdditional(in);
+        mask = in.getIntOr("mask", 0);
+        power = in.getIntOr("power", 0);
+        Map<String, LedConfig> m = in.read("strips", STRIPS).orElse(Map.of());
+        for (int i = 0; i < Placement.COUNT; i++) configs[i] = has(i) ? m.get(Integer.toString(i)) : null;
         VERSION++;
     }
 
     @Override
     public void onLoad() {
         super.onLoad();
-        if (level != null && !level.isClientSide) level.scheduleTick(worldPosition, getBlockState().getBlock(), 1);
+        if (level != null && !level.isClientSide()) level.scheduleTick(worldPosition, getBlockState().getBlock(), 1);
     }
 
     @Override

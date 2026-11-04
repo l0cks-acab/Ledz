@@ -7,8 +7,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.IntConsumer;
-import net.minecraft.Util;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.util.Util;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -17,7 +18,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 public class ConfiguratorScreen extends Screen {
     private static final int W = 232, H = 208;
@@ -109,12 +110,13 @@ public class ConfiguratorScreen extends Screen {
     }
 
     private void save() {
-        PacketDistributor.sendToServer(new SetConfigPayload(hand == InteractionHand.OFF_HAND, current()));
+        ClientPacketDistributor.sendToServer(new SetConfigPayload(hand == InteractionHand.OFF_HAND, current()));
         onClose();
     }
 
     @Override
-    public boolean mouseClicked(double mx, double my, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mx = event.x(), my = event.y();
         for (int k = 0; k < stops.size(); k++) {
             int sx = x0 + 8 + k * 26, sy = y0 + 36;
             if (mx >= sx && mx < sx + 22 && my >= sy && my < sy + 16) {
@@ -132,20 +134,20 @@ public class ConfiguratorScreen extends Screen {
                 return true;
             }
         }
-        return super.mouseClicked(mx, my, button);
+        return super.mouseClicked(event, doubleClick);
     }
 
     @Override
-    public void renderBackground(GuiGraphics gg, int mx, int my, float pt) {
-        super.renderBackground(gg, mx, my, pt);
+    public void extractBackground(GuiGraphicsExtractor gg, int mx, int my, float pt) {
+        super.extractBackground(gg, mx, my, pt);
         gg.fill(x0 - 1, y0 - 1, x0 + W + 1, y0 + H + 1, BORDER);
         gg.fill(x0, y0, x0 + W, y0 + H, PANEL);
     }
 
     @Override
-    public void render(GuiGraphics gg, int mx, int my, float pt) {
-        super.render(gg, mx, my, pt);
-        gg.drawString(font, title, x0 + 8, y0 + 7, 0xFFFFFFFF, false);
+    public void extractRenderState(GuiGraphicsExtractor gg, int mx, int my, float pt) {
+        super.extractRenderState(gg, mx, my, pt);
+        gg.text(font, title, x0 + 8, y0 + 7, 0xFFFFFFFF, false);
 
         // animated preview
         LedConfig c = current();
@@ -172,7 +174,7 @@ public class ConfiguratorScreen extends Screen {
             gg.fill(qx - 1, qy - 1, qx + 13, qy + 13, hover ? 0xFFFFFFFF : BORDER);
             gg.fill(qx, qy, qx + 12, qy + 12, 0xFF000000 | (dyes[k].getTextureDiffuseColor() & 0xFFFFFF));
         }
-        gg.drawString(font, Component.translatable("gui.lumend.hint"), x0 + 8, y0 + 168, LABEL, false);
+        gg.text(font, Component.translatable("gui.lumend.hint"), x0 + 8, y0 + 168, LABEL, false);
     }
 
     @Override

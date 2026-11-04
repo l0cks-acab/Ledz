@@ -57,7 +57,7 @@ public class LedStripItem extends Item {
         int idx = freeSide(face, mask, local);
         if (idx < 0) return InteractionResult.FAIL;
 
-        if (!level.isClientSide) {
+        if (!level.isClientSide()) {
             if (!level.getBlockState(cell).is(Lumend.LED_BLOCK.get()))
                 level.setBlock(cell, Lumend.LED_BLOCK.get().defaultBlockState(), 3);
             if (!(level.getBlockEntity(cell) instanceof LedStripBlockEntity be)) return InteractionResult.FAIL;
@@ -73,7 +73,7 @@ public class LedStripItem extends Item {
             if (ctx.getPlayer() == null || !ctx.getPlayer().getAbilities().instabuild) ctx.getItemInHand().shrink(1);
             level.playSound(null, cell, SoundEvents.AMETHYST_BLOCK_PLACE, SoundSource.BLOCKS, 0.7f, 1.4f);
         }
-        return InteractionResult.sidedSuccess(level.isClientSide);
+        return InteractionResult.SUCCESS;
     }
 
     private static int freeSide(Direction face, int mask, Vec3 local) {

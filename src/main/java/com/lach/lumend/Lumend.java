@@ -4,7 +4,7 @@ import com.lach.lumend.net.SetConfigPayload;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
@@ -34,12 +34,12 @@ public class Lumend {
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<LedConfig>> LED_CONFIG = COMPONENTS.registerComponentType("led_config",
             b -> b.persistent(LedConfig.CODEC).networkSynchronized(LedConfig.STREAM_CODEC));
 
-    public static final DeferredBlock<LedStripBlock> LED_BLOCK = BLOCKS.registerBlock("led_strip", LedStripBlock::new, LedStripBlock.PROPERTIES);
+    public static final DeferredBlock<LedStripBlock> LED_BLOCK = BLOCKS.registerBlock("led_strip", LedStripBlock::new, LedStripBlock::properties);
     public static final DeferredItem<LedStripItem> LED_STRIP = ITEMS.registerItem("led_strip", LedStripItem::new);
     public static final DeferredItem<LedConfiguratorItem> CONFIGURATOR = ITEMS.registerItem("led_configurator", LedConfiguratorItem::new,
-            new Item.Properties().stacksTo(1));
+            p -> p.stacksTo(1));
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<LedStripBlockEntity>> LED_BE = BLOCK_ENTITIES.register("led_strip",
-            () -> BlockEntityType.Builder.of(LedStripBlockEntity::new, LED_BLOCK.get()).build(null));
+            () -> new BlockEntityType<>(LedStripBlockEntity::new, LED_BLOCK.get()));
 
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> TAB = TABS.register("main", () -> CreativeModeTab.builder()
             .title(Component.translatable("itemGroup." + MODID))
@@ -60,8 +60,8 @@ public class Lumend {
         modBus.addListener(Lumend::registerPayloads);
     }
 
-    public static ResourceLocation id(String path) {
-        return ResourceLocation.fromNamespaceAndPath(MODID, path);
+    public static Identifier id(String path) {
+        return Identifier.fromNamespaceAndPath(MODID, path);
     }
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {

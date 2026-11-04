@@ -13,11 +13,11 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -46,40 +46,40 @@ public class LedConfiguratorItem extends Item {
         int idx = Placement.nearest(be.mask(), local);
         // clicking the supporting block: only counts when close to a strip
         if (idx < 0 || Placement.distance(idx, local) > 0.3) return InteractionResult.PASS;
-        if (!level.isClientSide) {
+        if (!level.isClientSide()) {
             ItemStack stack = ctx.getItemInHand();
             if (player != null && player.isShiftKeyDown()) {
                 stack.set(Lumend.LED_CONFIG.get(), be.config(idx));
-                player.displayClientMessage(Component.translatable("msg.lumend.copied"), true);
+                player.sendOverlayMessage(Component.translatable("msg.lumend.copied"));
                 level.playSound(null, pos, SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.PLAYERS, 0.4f, 1.6f);
             } else {
                 LedConfig cfg = get(stack);
                 Set<LedGraph.Bar> run = LedGraph.component(level, new LedGraph.Bar(pos.immutable(), idx));
                 for (LedGraph.Bar b : run)
                     if (level.getBlockEntity(b.cell()) instanceof LedStripBlockEntity e) e.setConfig(b.idx(), cfg);
-                if (player != null) player.displayClientMessage(Component.translatable("msg.lumend.applied", run.size()), true);
+                if (player != null) player.sendOverlayMessage(Component.translatable("msg.lumend.applied", run.size()));
                 level.playSound(null, pos, SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.PLAYERS, 0.8f, 1.5f);
             }
         }
-        return InteractionResult.sidedSuccess(level.isClientSide);
+        return InteractionResult.SUCCESS;
     }
 
     @Override
-    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
-        if (level.isClientSide) openScreen.accept(hand);
-        return InteractionResultHolder.sidedSuccess(player.getItemInHand(hand), level.isClientSide);
+    public InteractionResult use(Level level, Player player, InteractionHand hand) {
+        if (level.isClientSide()) openScreen.accept(hand);
+        return InteractionResult.SUCCESS;
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, TooltipContext ctx, List<Component> tip, TooltipFlag flag) {
+    public void appendHoverText(ItemStack stack, TooltipContext ctx, TooltipDisplay display, Consumer<Component> tip, TooltipFlag flag) {
         LedConfig c = get(stack);
         MutableComponent bar = Component.empty();
         for (int s : c.stops()) bar.append(Component.literal("██").withStyle(Style.EMPTY.withColor(TextColor.fromRgb(s))));
-        tip.add(bar);
-        tip.add(Component.translatable("gui.lumend.mode." + c.mode()).withStyle(ChatFormatting.GRAY)
+        tip.accept(bar);
+        tip.accept(Component.translatable("gui.lumend.mode." + c.mode()).withStyle(ChatFormatting.GRAY)
                 .append(Component.literal(" · " + c.brightness() + "%")));
-        tip.add(Component.translatable("tip.lumend.configurator.use").withStyle(ChatFormatting.DARK_GRAY));
-        tip.add(Component.translatable("tip.lumend.configurator.apply").withStyle(ChatFormatting.DARK_GRAY));
-        tip.add(Component.translatable("tip.lumend.configurator.copy").withStyle(ChatFormatting.DARK_GRAY));
+        tip.accept(Component.translatable("tip.lumend.configurator.use").withStyle(ChatFormatting.DARK_GRAY));
+        tip.accept(Component.translatable("tip.lumend.configurator.apply").withStyle(ChatFormatting.DARK_GRAY));
+        tip.accept(Component.translatable("tip.lumend.configurator.copy").withStyle(ChatFormatting.DARK_GRAY));
     }
 }
