@@ -8,10 +8,7 @@ def grad(t):
     t = t % 1 * (len(STOPS) - 1); i = int(t); f = t - i
     a, b = STOPS[i], STOPS[min(i + 1, len(STOPS) - 1)]
     return tuple(round(a[k] + (b[k] - a[k]) * f) for k in range(3))
-bg = Image.new('RGBA', (S, S), (10, 13, 22, 255))
-# soft vignette
-v = Image.new('L', (S, S), 0); ImageDraw.Draw(v).ellipse([-200, -200, S + 200, S + 200], fill=255)
-bg = Image.composite(bg, Image.new('RGBA', (S, S), (4, 5, 10, 255)), v.filter(ImageFilter.GaussianBlur(160)))
+bg = Image.new('RGBA', (S, S), (0, 0, 0, 0))
 cx, cy, r = S / 2, S / 2 + 30, 300
 top = (cx, cy - r * 1.15); rt = (cx + r, cy - r * 0.575); ctr = (cx, cy); lt = (cx - r, cy - r * 0.575)
 lb = (cx - r, cy + r * 0.575); bot = (cx, cy + r * 1.15); rb = (cx + r, cy + r * 0.575)
@@ -37,6 +34,5 @@ bg.alpha_composite(glow.filter(ImageFilter.GaussianBlur(40)))
 glow2 = Image.new('RGBA', (S, S), (0, 0, 0, 0)); draw(ImageDraw.Draw(glow2), 34)
 bg.alpha_composite(glow2.filter(ImageFilter.GaussianBlur(12)))
 draw(ImageDraw.Draw(bg), 22)
-bg = bg.convert('RGB')
 for sz in (1024, 512, 256, 120):
     bg.resize((sz, sz), Image.LANCZOS).save(os.path.join(OUT, f'ledz-icon-{sz}.png'), optimize=True)
