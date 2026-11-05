@@ -1,8 +1,8 @@
-"""Generates Lumen'd textures. Run from repo root: python3 tools/textures.py"""
+"""Generates Ledz textures. Run from repo root: python3 tools/textures.py"""
 from PIL import Image, ImageDraw, ImageFilter
 import colorsys, os
 
-A = 'src/main/resources/assets/lumend/textures'
+A = 'src/main/resources/assets/ledz/textures'
 os.makedirs(f'{A}/block', exist_ok=True)
 os.makedirs(f'{A}/item', exist_ok=True)
 
