@@ -2,7 +2,7 @@
   "sources": [
     {
       "type": "single",
-      "resource": "lumend:block/led"
+      "resource": "ledz:block/led"
     }
   ]
 }

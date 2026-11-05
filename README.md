@@ -1,4 +1,4 @@
-# Lumen'd - Customizable Led Lights/Strips
+# Ledz - Customizable Led Lights/Strips
 
 NeoForge mod for Minecraft 1.21.1 and 26.1.2. Stick LED strips on block edges and paint them with gradients using the LED Configurator.
 
