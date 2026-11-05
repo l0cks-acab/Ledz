@@ -1,4 +1,8 @@
-{ "sources": [
-  { "type": "single", "resource": "lumend:block/led" },
-  { "type": "single", "resource": "lumend:block/led_glow" }
-] }
+{
+  "sources": [
+    {
+      "type": "single",
+      "resource": "lumend:block/led"
+    }
+  ]
+}
