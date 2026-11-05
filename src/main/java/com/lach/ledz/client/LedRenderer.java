@@ -58,7 +58,7 @@ public class LedRenderer implements BlockEntityRenderer<LedStripBlockEntity> {
             Wash.build(level, be.getBlockPos(), i, samples, be.config(i).wash() / 100f * f, wash);
         }
         if (!wash.isEmpty()) {
-            VertexConsumer add = buffers.getBuffer(RenderType.lightning());
+            VertexConsumer add = buffers.getBuffer(WashRenderType.WASH);
             for (int q = 0; q < wash.size(); q += 4) {
                 for (int v = 0; v < 4; v++) washVertex(add, pose, wash.get(q + v));
                 for (int v = 3; v >= 0; v--) washVertex(add, pose, wash.get(q + v));

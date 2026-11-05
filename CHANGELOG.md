@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.1
+- Fixed colour wash flickering where several strips light the same face (wash no longer writes depth).
+
 ## 0.2.0
 - Renamed to Ledz. Mod id is now `ledz` (items `ledz:led_strip`, `ledz:led_configurator`). Strips placed with the old `lumend` id do not carry over.
 - Fixed visible seams between joined strips: no end caps where strips meet, and the texture no longer darkens at each block joint.
