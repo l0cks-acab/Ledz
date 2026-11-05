@@ -28,10 +28,10 @@ import org.jspecify.annotations.Nullable;
 
 public class LedRenderer implements BlockEntityRenderer<LedStripBlockEntity, LedRenderer.State> {
     private static final int SEGMENTS = 8;
+    private static final float OVERLAP = 0.004f;
     private static final int OFF_COLOR = 0x2A2C30;
-    private static final float GLOW = 1.1f / 16f;
 
-    record Strip(float[] box, float[] glowBox, int axis, int[] colors, boolean lit, int glowAlpha) {}
+    record Strip(float[] box, int axis, int caps, int[] colors, boolean lit, int glowAlpha) {}
 
     public static class State extends BlockEntityRenderState {
         List<Strip> strips = List.of();
@@ -66,7 +66,7 @@ public class LedRenderer implements BlockEntityRenderer<LedStripBlockEntity, Led
                     colors[k] = lit ? LedConfig.scale(cfg.color(t[0] + (t[1] - t[0]) * u, secs), 0.15f + 0.85f * f) : OFF_COLOR;
                 }
                 if (lit && cfg.wash() > 0) Wash.build(level, be.getBlockPos(), i, colors, cfg.wash() / 100f * f, wash);
-                out.add(new Strip(Placement.box(i, 0), Placement.box(i, GLOW), Placement.axis(i).ordinal(), colors, lit, Math.round(90 * f)));
+                out.add(new Strip(Placement.box(i, 0), Placement.axis(i).ordinal(), caps(level, be.getBlockPos(), i), colors, lit, Math.round(90 * f)));
             }
         }
         state.strips = out;
@@ -78,12 +78,11 @@ public class LedRenderer implements BlockEntityRenderer<LedStripBlockEntity, Led
         if (state.strips.isEmpty()) return;
         var atlas = Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS);
         TextureAtlasSprite sprite = atlas.getSprite(Lumend.id("block/led"));
-        TextureAtlasSprite glowSprite = atlas.getSprite(Lumend.id("block/led_glow"));
         int light = state.lightCoords;
         List<Strip> strips = state.strips;
         out.submitCustomGeometry(ps, Sheets.cutoutBlockSheet(), (pose, vc) -> {
             for (Strip s : strips)
-                box(vc, pose, sprite, s.box(), s.axis(), s.colors(), 255, s.lit() ? LightCoordsUtil.FULL_BRIGHT : light);
+                box(vc, pose, sprite, s.box(), s.axis(), s.caps(), s.colors(), 255, s.lit() ? LightCoordsUtil.FULL_BRIGHT : light);
         });
         List<Wash.Vertex> wash = state.wash;
         if (!wash.isEmpty())
@@ -93,10 +92,7 @@ public class LedRenderer implements BlockEntityRenderer<LedStripBlockEntity, Led
                     for (int v = 3; v >= 0; v--) washVertex(vc, pose, wash.get(q + v));
                 }
             });
-        out.submitCustomGeometry(ps, Sheets.translucentBlockItemSheet(), (pose, vc) -> {
-            for (Strip s : strips)
-                if (s.lit()) box(vc, pose, glowSprite, s.glowBox(), s.axis(), s.colors(), s.glowAlpha(), LightCoordsUtil.FULL_BRIGHT);
-        });
+
     }
 
     private static void washVertex(VertexConsumer vc, PoseStack.Pose pose, Wash.Vertex v) {
@@ -109,11 +105,16 @@ public class LedRenderer implements BlockEntityRenderer<LedStripBlockEntity, Led
     }
 
     /** Box with per-vertex colour along the strip axis. */
-    private static void box(VertexConsumer vc, PoseStack.Pose pose, TextureAtlasSprite s, float[] b, int axis,
+    private static void box(VertexConsumer vc, PoseStack.Pose pose, TextureAtlasSprite s, float[] b, int axis, int caps,
                             int[] colors, int alpha, int light) {
+        // joined ends overlap their neighbour slightly so no crack shows between block entities
+        b = b.clone();
+        if ((caps & 1) == 0) b[axis] -= OVERLAP;
+        if ((caps & 2) == 0) b[axis + 3] += OVERLAP;
         for (int k = 0; k < 3; k++) {
             int p = (k + 1) % 3, q = (k + 2) % 3;
             for (int sign = -1; sign <= 1; sign += 2) {
+                if (k == axis && (caps & (sign > 0 ? 2 : 1)) == 0) continue;
                 float c = sign > 0 ? b[k + 3] : b[k];
                 int segP = p == axis ? SEGMENTS : 1, segQ = q == axis ? SEGMENTS : 1;
                 for (int sp = 0; sp < segP; sp++)
@@ -128,12 +129,12 @@ public class LedRenderer implements BlockEntityRenderer<LedStripBlockEntity, Led
                             xyz[k] = c;
                             xyz[p] = v[0];
                             xyz[q] = v[1];
-                            int rgb = colors[Math.round(xyz[axis] * SEGMENTS)];
+                            int rgb = colors[Math.clamp(Math.round(xyz[axis] * SEGMENTS), 0, SEGMENTS)];
                             float[] n = new float[3];
                             n[k] = sign;
                             vc.addVertex(pose, xyz[0], xyz[1], xyz[2])
                                     .setColor((rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255, alpha)
-                                    .setUv(s.getU(v[0]), s.getV(v[1]))
+                                    .setUv(s.getU(p == axis ? 0.5f : v[0]), s.getV(q == axis ? 0.5f : v[1]))
                                     .setOverlay(OverlayTexture.NO_OVERLAY)
                                     .setLight(light)
                                     .setNormal(pose, n[0], n[1], n[2]);
@@ -141,6 +142,19 @@ public class LedRenderer implements BlockEntityRenderer<LedStripBlockEntity, Led
                     }
             }
         }
+    }
+
+    /** Bit 0: cap the low end, bit 1: cap the high end. An end touching another strip gets no cap. */
+    static int caps(net.minecraft.world.level.Level level, net.minecraft.core.BlockPos pos, int idx) {
+        net.minecraft.core.BlockPos[] e = Placement.endpoints(pos, idx);
+        int caps = 0;
+        for (int k = 0; k < 2; k++) {
+            boolean joined = false;
+            for (com.lach.lumend.LedGraph.Bar b : com.lach.lumend.LedGraph.at(level, e[k], null))
+                if (!(b.cell().equals(pos) && b.idx() == idx)) { joined = true; break; }
+            if (!joined) caps |= 1 << k;
+        }
+        return caps;
     }
 
     private static float lerp(float a, float b, float t) {

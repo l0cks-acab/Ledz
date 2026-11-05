@@ -24,13 +24,6 @@ for y in range(16):
         img.putpixel((x, y), (v, v, v, 255))
 save(img, f'{A}/block/led.png')
 
-# block/led_glow: soft falloff, alpha carried by vertex colour
-img = Image.new('RGBA', (16, 16))
-for y in range(16):
-    for x in range(16):
-        d = max(abs(y - 7.5), 0) / 7.5
-        img.putpixel((x, y), (255, 255, 255, round(255 * (1 - 0.6 * d))))
-save(img, f'{A}/block/led_glow.png')
 
 BLUE, GREEN = (30, 91, 255), (25, 230, 160)
 
