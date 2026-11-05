@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Sheets;
-import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
@@ -86,7 +85,7 @@ public class LedRenderer implements BlockEntityRenderer<LedStripBlockEntity, Led
         });
         List<Wash.Vertex> wash = state.wash;
         if (!wash.isEmpty())
-            out.submitCustomGeometry(ps, RenderTypes.lightning(), (pose, vc) -> {
+            out.submitCustomGeometry(ps, WashRenderType.WASH, (pose, vc) -> {
                 for (int q = 0; q < wash.size(); q += 4) {
                     for (int v = 0; v < 4; v++) washVertex(vc, pose, wash.get(q + v));
                     for (int v = 3; v >= 0; v--) washVertex(vc, pose, wash.get(q + v));
