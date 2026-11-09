@@ -35,20 +35,16 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 public class LedStripBlock extends BaseEntityBlock {
-    public static final MapCodec<LedStripBlock> CODEC = simpleCodec(LedStripBlock::new);
     public static final IntegerProperty LIGHT = IntegerProperty.create("light", 0, 15);
     static BlockBehaviour.Properties properties(BlockBehaviour.Properties p) {
         return p.noCollision().noOcclusion().strength(0.2f).sound(SoundType.GLASS)
-            .pushReaction(PushReaction.DESTROY).lightLevel(s -> s.getValue(LIGHT));
+            .pushReaction(PushReaction.POPPED).lightLevel(s -> s.getValue(LIGHT));
     }
 
     public LedStripBlock(Properties props) {
         super(props);
         registerDefaultState(stateDefinition.any().setValue(LIGHT, 0));
     }
-
-    @Override
-    protected MapCodec<? extends BaseEntityBlock> codec() { return CODEC; }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> b) { b.add(LIGHT); }

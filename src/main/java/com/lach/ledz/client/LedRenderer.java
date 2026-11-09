@@ -79,7 +79,7 @@ public class LedRenderer implements BlockEntityRenderer<LedStripBlockEntity, Led
         TextureAtlasSprite sprite = atlas.getSprite(Ledz.id("block/led"));
         int light = state.lightCoords;
         List<Strip> strips = state.strips;
-        out.submitCustomGeometry(ps, Sheets.cutoutBlockSheet(), (pose, vc) -> {
+        out.submitCustomGeometry(ps, net.minecraft.client.renderer.rendertype.RenderTypes.entityCutout(net.minecraft.client.renderer.texture.TextureAtlas.LOCATION_BLOCKS), (pose, vc) -> {
             for (Strip s : strips)
                 box(vc, pose, sprite, s.box(), s.axis(), s.caps(), s.colors(), 255, s.lit() ? LightCoordsUtil.FULL_BRIGHT : light);
         });

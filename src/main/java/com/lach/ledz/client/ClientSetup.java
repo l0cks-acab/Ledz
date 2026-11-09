@@ -28,7 +28,7 @@ public final class ClientSetup {
     static void setup(FMLClientSetupEvent e) {
         LedConfiguratorItem.openScreen = hand -> {
             Minecraft mc = Minecraft.getInstance();
-            if (mc.player != null) mc.setScreen(new ConfiguratorScreen(hand, mc.player.getItemInHand(hand)));
+            if (mc.player != null) mc.gui.setScreen(new ConfiguratorScreen(hand, mc.player.getItemInHand(hand)));
         };
     }
 }

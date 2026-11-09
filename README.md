@@ -1,6 +1,6 @@
 # Ledz - Customizable Led Lights/Strips
 
-NeoForge mod for Minecraft 1.21.1 and 26.1.2. Stick LED strips on block edges and paint them with gradients using the LED Configurator.
+NeoForge mod for Minecraft 1.21.1, 26.1.2, 26.2 and 26.3. Stick LED strips on block edges and paint them with gradients using the LED Configurator.
 
 ![Modes](docs/modes.gif)
 
@@ -43,6 +43,8 @@ NeoForge mod for Minecraft 1.21.1 and 26.1.2. Stick LED strips on block edges an
 ## Versions
 - `main`: Minecraft 1.21.1 (NeoForge 21.1).
 - `mc/26.1.2`: Minecraft 26.1.2 (NeoForge 26.1.2).
+- `mc/26.2`: Minecraft 26.2 (NeoForge 26.2).
+- `mc/26.3`: Minecraft 26.3 (NeoForge 26.3).
 
 ## Build
 `./gradlew build`. Textures: `python3 tools/textures.py` (needs Pillow).
