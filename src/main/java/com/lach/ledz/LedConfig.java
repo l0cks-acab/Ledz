@@ -104,7 +104,10 @@ public record LedConfig(List<Integer> stops, int mode, int speed, int brightness
 
     /** Light level the strip should emit for a redstone signal. */
     public int lightFor(int power) {
-        return Math.round(light * redstoneFactor(power) * Math.max(brightness, 25) / 100f);
+        float f = redstoneFactor(power);
+        // matches the renderer: a strip that draws as off gives no light
+        if (f * brightness / 100f <= 0.02f) return 0;
+        return Math.round(light * f * Math.max(brightness, 25) / 100f);
     }
 
     public static double frac(double v) { return v - Math.floor(v); }
