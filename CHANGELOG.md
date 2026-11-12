@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.2
+- Fixed strips at 0% brightness (or dimmed to off by redstone) still giving off block light. A strip that shows as off now gives no light.
+
 ## 0.2.1
 - Fixed colour wash flickering where several strips light the same face (wash no longer writes depth).
 
