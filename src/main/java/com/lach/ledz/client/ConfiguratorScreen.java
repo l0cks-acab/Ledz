@@ -3,6 +3,15 @@ package com.lach.ledz.client;
 import com.lach.ledz.LedConfig;
 import com.lach.ledz.LedConfiguratorItem;
 import com.lach.ledz.net.SetConfigPayload;
+import com.lach.ledz.net.SetPresetPayload;
+import com.lach.ledz.Ledz;
+import com.lach.ledz.Presets;
+import java.util.Optional;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.sounds.SoundEvents;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -20,11 +29,14 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 public class ConfiguratorScreen extends Screen {
-    private static final int W = 232, H = 230;
+    private static final int W = 232, H = 254;
+    private static final int PRESET_Y = 192, PRESET_W = 24, PRESET_H = 14;
     private static final int PANEL = 0xF0101418, BORDER = 0xFF3A4652, LABEL = 0xFFB8C4CC;
 
     private final InteractionHand hand;
+    private final ItemStack stack;
     private LedConfig cfg;
+    private Presets presets;
     private final List<Integer> stops;
     private int sel;
     private boolean syncing;
@@ -36,7 +48,9 @@ public class ConfiguratorScreen extends Screen {
     public ConfiguratorScreen(InteractionHand hand, ItemStack stack) {
         super(Component.translatable("gui.ledz.configurator"));
         this.hand = hand;
+        this.stack = stack;
         this.cfg = LedConfiguratorItem.get(stack);
+        this.presets = stack.getOrDefault(Ledz.PRESETS.get(), Presets.EMPTY);
         this.stops = new ArrayList<>(cfg.stops());
     }
 
@@ -82,10 +96,40 @@ public class ConfiguratorScreen extends Screen {
         addRenderableWidget(Button.builder(Component.translatable(cfg.reverse() ? "gui.ledz.reverse.on" : "gui.ledz.reverse.off"),
                 bt -> { cfg = cfg.withReverse(!cfg.reverse()); rebuildWidgets(); }).bounds(x + half + 4, y0 + 146, half, 18).build());
 
-        addRenderableWidget(new IntSlider(x, y0 + 168, half * 2 + 4, 18, "gui.ledz.wash", 0, 100, cfg.wash(), v -> cfg = cfg.withWash(v)));
+        addRenderableWidget(new IntSlider(x, y0 + 168, half, 18, "gui.ledz.wash", 0, 100, cfg.wash(), v -> cfg = cfg.withWash(v)));
+        Button ch = addRenderableWidget(Button.builder(Component.translatable("gui.ledz.channel", LedConfig.channelName(cfg.channel())),
+                bt -> { cfg = cfg.withChannel(cycle(cfg.channel(), hasShiftDown() ? -1 : 1)); rebuildWidgets(); }).bounds(x + half + 4, y0 + 168, half, 18).build());
+        ch.setTooltip(Tooltip.create(Component.translatable("gui.ledz.channel.tip")));
 
         addRenderableWidget(Button.builder(Component.translatable("gui.done"), bt -> save()).bounds(x, y0 + H - 26, half, 18).build());
         addRenderableWidget(Button.builder(Component.translatable("gui.cancel"), bt -> onClose()).bounds(x + half + 4, y0 + H - 26, half, 18).build());
+    }
+
+    private static int cycle(int ch, int step) {
+        // -1 (none), 0..15
+        return Math.floorMod(ch + 1 + step, LedConfig.CHANNELS + 1) - 1;
+    }
+
+    private void loadPreset(LedConfig p) {
+        cfg = p;
+        stops.clear();
+        stops.addAll(p.stops());
+        sel = 0;
+        rebuildWidgets();
+    }
+
+    private void savePreset(int slot, LedConfig p) {
+        presets = presets.with(slot, p);
+        stack.set(Ledz.PRESETS.get(), presets);
+        PacketDistributor.sendToServer(new SetPresetPayload(hand == InteractionHand.OFF_HAND, slot, Optional.ofNullable(p)));
+    }
+
+    private int presetAt(double mx, double my) {
+        for (int k = 0; k < Presets.SLOTS; k++) {
+            int px = x0 + 8 + k * (PRESET_W + 3), py = y0 + PRESET_Y + 10;
+            if (mx >= px && mx < px + PRESET_W && my >= py && my < py + PRESET_H) return k;
+        }
+        return -1;
     }
 
     private void channel(int shift, int v) {
@@ -117,6 +161,15 @@ public class ConfiguratorScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
+        int slot = presetAt(mx, my);
+        if (slot >= 0) {
+            LedConfig saved = presets.get(slot);
+            if (button == 1) savePreset(slot, null);
+            else if (hasShiftDown() || saved == null) savePreset(slot, current());
+            else loadPreset(saved);
+            playClick();
+            return true;
+        }
         for (int k = 0; k < stops.size(); k++) {
             int sx = x0 + 8 + k * 26, sy = y0 + 36;
             if (mx >= sx && mx < sx + 22 && my >= sy && my < sy + 16) {
@@ -174,7 +227,32 @@ public class ConfiguratorScreen extends Screen {
             gg.fill(qx - 1, qy - 1, qx + 13, qy + 13, hover ? 0xFFFFFFFF : BORDER);
             gg.fill(qx, qy, qx + 12, qy + 12, 0xFF000000 | (dyes[k].getTextureDiffuseColor() & 0xFFFFFF));
         }
-        gg.drawString(font, Component.translatable("gui.ledz.hint"), x0 + 8, y0 + 192, LABEL, false);
+        // presets
+        gg.drawString(font, Component.translatable("gui.ledz.presets"), x0 + 8, y0 + PRESET_Y, LABEL, false);
+        int hovered = presetAt(mx, my);
+        for (int k = 0; k < Presets.SLOTS; k++) {
+            int qx = x0 + 8 + k * (PRESET_W + 3), qy = y0 + PRESET_Y + 10;
+            gg.fill(qx - 1, qy - 1, qx + PRESET_W + 1, qy + PRESET_H + 1, k == hovered ? 0xFFFFFFFF : BORDER);
+            LedConfig p = presets.get(k);
+            if (p == null) {
+                gg.fill(qx, qy, qx + PRESET_W, qy + PRESET_H, 0xFF1A2026);
+                gg.drawCenteredString(font, "+", qx + PRESET_W / 2, qy + 3, 0xFF56626C);
+            } else
+                for (int i = 0; i < PRESET_W; i++)
+                    gg.fill(qx + i, qy, qx + i + 1, qy + PRESET_H, 0xFF000000 | p.color(i / (double) (PRESET_W - 1), secs));
+        }
+        gg.drawString(font, Component.translatable("gui.ledz.hint"), x0 + 8, y0 + 218, LABEL, false);
+        if (hovered >= 0) {
+            LedConfig p = presets.get(hovered);
+            List<Component> tip = new ArrayList<>();
+            if (p != null) tip.add(Component.translatable("gui.ledz.mode." + p.mode()));
+            tip.add(Component.translatable(p == null ? "gui.ledz.preset.empty" : "gui.ledz.preset.full").withStyle(ChatFormatting.GRAY));
+            gg.renderComponentTooltip(font, tip, mx, my);
+        }
+    }
+
+    private static void playClick() {
+        Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1f));
     }
 
     @Override

@@ -1,0 +1,90 @@
+{
+  "parent": "minecraft:block/block",
+  "render_type": "minecraft:cutout",
+  "textures": {
+    "particle": "ledz:block/controller_side",
+    "side": "ledz:block/controller_side",
+    "top": "ledz:block/controller_top",
+    "bottom": "ledz:block/lamp_frame",
+    "overlay": "ledz:block/controller_overlay"
+  },
+  "elements": [
+    {
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ],
+      "faces": {
+        "north": {
+          "texture": "#side",
+          "cullface": "north"
+        },
+        "south": {
+          "texture": "#side",
+          "cullface": "south"
+        },
+        "east": {
+          "texture": "#side",
+          "cullface": "east"
+        },
+        "west": {
+          "texture": "#side",
+          "cullface": "west"
+        },
+        "up": {
+          "texture": "#top",
+          "cullface": "up"
+        },
+        "down": {
+          "texture": "#bottom",
+          "cullface": "down"
+        }
+      }
+    },
+    {
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ],
+      "faces": {
+        "north": {
+          "texture": "#overlay",
+          "cullface": "north",
+          "tintindex": 0
+        },
+        "south": {
+          "texture": "#overlay",
+          "cullface": "south",
+          "tintindex": 0
+        },
+        "east": {
+          "texture": "#overlay",
+          "cullface": "east",
+          "tintindex": 0
+        },
+        "west": {
+          "texture": "#overlay",
+          "cullface": "west",
+          "tintindex": 0
+        },
+        "up": {
+          "texture": "#overlay",
+          "cullface": "up",
+          "tintindex": 0
+        }
+      }
+    }
+  ]
+}

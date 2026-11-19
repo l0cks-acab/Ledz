@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "ledz:block/light_controller"
+    }
+  }
+}

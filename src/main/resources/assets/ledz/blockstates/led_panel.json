@@ -1,0 +1,30 @@
+{
+  "variants": {
+    "facing=up": {
+      "model": "ledz:block/led_panel"
+    },
+    "facing=down": {
+      "model": "ledz:block/led_panel",
+      "x": 180
+    },
+    "facing=north": {
+      "model": "ledz:block/led_panel",
+      "x": 90
+    },
+    "facing=south": {
+      "model": "ledz:block/led_panel",
+      "x": 90,
+      "y": 180
+    },
+    "facing=west": {
+      "model": "ledz:block/led_panel",
+      "x": 90,
+      "y": 270
+    },
+    "facing=east": {
+      "model": "ledz:block/led_panel",
+      "x": 90,
+      "y": 90
+    }
+  }
+}

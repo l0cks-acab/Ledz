@@ -12,7 +12,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
-public class LedStripBlockEntity extends BlockEntity {
+public class LedStripBlockEntity extends BlockEntity implements ChannelNet.Light {
     /** Bumped whenever any strip changes, so client run caches know to rebuild. */
     public static volatile int VERSION;
 
@@ -33,6 +33,7 @@ public class LedStripBlockEntity extends BlockEntity {
     public void add(int i, LedConfig cfg) {
         mask |= 1 << i;
         configs[i] = cfg;
+        power = computePower();
         changed();
     }
 
@@ -50,7 +51,44 @@ public class LedStripBlockEntity extends BlockEntity {
     public void setConfig(int i, LedConfig cfg) {
         if (!has(i) || config(i).equals(cfg)) return;
         configs[i] = cfg;
+        power = computePower();
         changed();
+    }
+
+    @Override
+    public int channelMask() {
+        int m = 0;
+        for (int i = 0; i < Placement.COUNT; i++) if (has(i) && config(i).channel() >= 0) m |= 1 << config(i).channel();
+        return m;
+    }
+
+    private int computePower() {
+        if (level == null || level.isClientSide) return power;
+        return Math.max(level.getBestNeighborSignal(worldPosition), ChannelNet.power(level, worldPosition, channelMask()));
+    }
+
+    @Override
+    public void repower() {
+        int p = computePower();
+        if (p != power) {
+            power = p;
+            changed();
+        }
+    }
+
+    @Override
+    public int applyChannel(int channel, LedConfig cfg) {
+        int n = 0;
+        for (int i = 0; i < Placement.COUNT; i++)
+            if (has(i) && config(i).channel() == channel && !config(i).equals(cfg)) {
+                configs[i] = cfg;
+                n++;
+            }
+        if (n > 0) {
+            power = computePower();
+            changed();
+        }
+        return n;
     }
 
     /** Server: re-read redstone and drop strips that lost support. Returns strips dropped. */
@@ -67,7 +105,7 @@ public class LedStripBlockEntity extends BlockEntity {
                 dropped++;
             }
         }
-        int p = level.getBestNeighborSignal(worldPosition);
+        int p = computePower();
         boolean dirty = dropped > 0 || p != power;
         power = p;
         if (dirty) changed();
@@ -88,6 +126,8 @@ public class LedStripBlockEntity extends BlockEntity {
         VERSION++;
         setChanged();
         if (level != null && !level.isClientSide) {
+            // onLoad only runs on the next tick for freshly placed lights
+            if (!isRemoved()) ChannelNet.addLight(this);
             updateLight();
             level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_ALL);
         }
@@ -127,11 +167,15 @@ public class LedStripBlockEntity extends BlockEntity {
     @Override
     public void onLoad() {
         super.onLoad();
-        if (level != null && !level.isClientSide) level.scheduleTick(worldPosition, getBlockState().getBlock(), 1);
+        if (level != null && !level.isClientSide) {
+            ChannelNet.addLight(this);
+            level.scheduleTick(worldPosition, getBlockState().getBlock(), 1);
+        }
     }
 
     @Override
     public void setRemoved() {
+        ChannelNet.removeLight(this);
         super.setRemoved();
         VERSION++;
     }

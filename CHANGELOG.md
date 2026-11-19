@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+- LED Panel: flat square light for ceilings, walls and floors. Touching panels facing the same way share a look; the configurator applies to the whole group.
+- LED Spot: small downlight. Colour wash makes panels and spots cast a coloured pool of light on the surface they face (soft and wide for panels, tighter for spots).
+- Light Controller: pick a channel (dye colour) in the configurator and use it on the controller. It sends that look to every light on the channel within 48 blocks, and passes its redstone signal on to them, so one lever runs a whole room.
+- Presets: 8 saved looks on each configurator. Click to load, shift-click to save, right-click to clear.
+- New modes: Chase, Sparkle, Strobe, Breathe.
+
 ## 0.2.2
 - Fixed strips at 0% brightness (or dimmed to off by redstone) still giving off block light. A strip that shows as off now gives no light.
 

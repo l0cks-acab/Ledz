@@ -3,6 +3,22 @@
     {
       "type": "single",
       "resource": "ledz:block/led"
+    },
+    {
+      "type": "single",
+      "resource": "ledz:block/lamp_frame"
+    },
+    {
+      "type": "single",
+      "resource": "ledz:block/controller_side"
+    },
+    {
+      "type": "single",
+      "resource": "ledz:block/controller_top"
+    },
+    {
+      "type": "single",
+      "resource": "ledz:block/controller_overlay"
     }
   ]
 }

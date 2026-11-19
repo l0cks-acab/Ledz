@@ -74,6 +74,46 @@ img.putpixel((7, 0), (170, 120, 230, 255))
 img.putpixel((8, 0), (120, 80, 200, 255))
 save(img, f'{A}/item/led_configurator.png')
 
+
+# block/lamp_frame: brushed dark metal housing
+img = Image.new('RGBA', (16, 16))
+for y in range(16):
+    for x in range(16):
+        v = 58 + ((x * 7 + y * 3) % 5) - (6 if x in (0, 15) or y in (0, 15) else 0)
+        img.putpixel((x, y), (v, v + 4, v + 10, 255))
+save(img, f'{A}/block/lamp_frame.png')
+
+# light controller: copper-trimmed dark box, top with dial, side overlay = channel lens bar (tinted in game)
+def controller_base():
+    im = Image.new('RGBA', (16, 16))
+    for y in range(16):
+        for x in range(16):
+            v = 50 + ((x * 5 + y * 11) % 4)
+            im.putpixel((x, y), (v, v + 5, v + 12, 255))
+    dr = ImageDraw.Draw(im)
+    dr.rectangle([0, 0, 15, 15], outline=copper_d + (255,))
+    dr.line([1, 1, 14, 1], fill=copper + (255,))
+    dr.line([1, 1, 1, 14], fill=copper + (255,))
+    return im
+side = controller_base()
+ds = ImageDraw.Draw(side)
+ds.rectangle([3, 4, 12, 8], fill=(20, 24, 28, 255))
+for x, c in ((4, (200, 60, 60)), (7, (230, 200, 70)), (10, (70, 200, 110))):
+    ds.rectangle([x, 11, x + 1, 12], fill=c + (255,))
+save(side, f'{A}/block/controller_side.png')
+top = controller_base()
+dt = ImageDraw.Draw(top)
+dt.ellipse([4, 4, 11, 11], fill=(30, 34, 40, 255), outline=copper + (255,))
+dt.line([7, 5, 7, 8], fill=(220, 220, 225, 255))
+save(top, f'{A}/block/controller_top.png')
+ov = Image.new('RGBA', (16, 16), (0, 0, 0, 0))
+do = ImageDraw.Draw(ov)
+for x in range(4, 12):
+    v = 210 + (x % 2) * 30
+    for y in range(5, 8):
+        ov.putpixel((x, y), (v, v, v, 255))
+save(ov, f'{A}/block/controller_overlay.png')
+
 # logo 256: dark tile, block outline with gradient strip, glow
 S = 256
 logo = Image.new('RGBA', (S, S), (16, 20, 24, 255))
