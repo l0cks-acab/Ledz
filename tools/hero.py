@@ -60,7 +60,7 @@ def save(canvas, name):
 
 
 def crop_gui(path):
-    return Image.open(path).convert('RGB').crop((405, 128, 873, 592))
+    return Image.open(path).convert('RGB').crop((407, 105, 873, 615))
 
 
 room_wash = os.path.join(SH, 'room_w100.png')
@@ -92,7 +92,7 @@ def feature(name, title, lines, shot, shot_w, bgshot, y=None):
     return c
 
 
-feature('02-configurator.png', 'LED Configurator', ['Up to 4 colour stops,', 'animated modes,', 'light and redstone'], gui, 470, room_wash)
+feature('02-configurator.png', 'LED Configurator', ['Up to 4 colour stops,', '8 modes, 8 presets,', 'light, redstone, channels'], gui, 470, room_wash)
 feature('03-runs.png', 'Runs that join', ['Strips snap to edges', 'and share one gradient', 'across blocks and corners'], os.path.join(SH, 'placements.png'), 690, os.path.join(SH, 'placements.png'))
 feature('04-colour-wash.png', 'Colour wash', ['Strips tint the walls,', 'floor and ceiling', 'around them'], room_wash, 690, room_lit)
 feature('05-modes.png', 'Animated modes', ['Static, Scroll, Pulse,', 'Rainbow, dim or', 'redstone controlled'], os.path.join(SH, 'modes.png'), 690, os.path.join(SH, 'modes.png'))
