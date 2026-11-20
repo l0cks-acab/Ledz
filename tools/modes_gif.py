@@ -1,4 +1,5 @@
 """Modes GIF frames for 05-modes.gif. python3 tools/modes_gif.py <mode_shots> <shots_dir> <frames_out>, then ffmpeg palettegen (256, stats_mode=full) + paletteuse (sierra2_4a) at 6.667 fps."""
+import sys, os, glob
 sys.argv = [sys.argv[0], sys.argv[1], sys.argv[2], sys.argv[3]]
 SHOTS, SH, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
 src = open('tools/hero.py').read().split("room_wash = ")[0].replace("SH, OUT = sys.argv[1], sys.argv[2]", "")
