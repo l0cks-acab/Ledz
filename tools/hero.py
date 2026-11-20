@@ -95,14 +95,14 @@ def feature(name, title, lines, shot, shot_w, bgshot, y=None):
 feature('02-configurator.png', 'LED Configurator', ['Up to 4 colour stops,', '8 modes, 8 presets,', 'light, redstone, channels'], gui, 470, room_wash)
 feature('03-runs.png', 'Runs that join', ['Strips snap to edges', 'and share one gradient', 'across blocks and corners'], os.path.join(SH, 'placements.png'), 690, os.path.join(SH, 'placements.png'))
 feature('04-colour-wash.png', 'Colour wash', ['Strips tint the walls,', 'floor and ceiling', 'around them'], room_wash, 690, room_lit)
-feature('05-modes.png', 'Animated modes', ['Static, Scroll, Pulse,', 'Rainbow, dim or', 'redstone controlled'], os.path.join(SH, 'modes.png'), 690, os.path.join(SH, 'modes.png'))
+feature('05-modes.png', 'Animated modes', ['Static, Scroll, Pulse,', 'Rainbow, Chase, Sparkle,', 'Strobe and Breathe'], os.path.join(SH, 'modes.png'), 690, os.path.join(SH, 'modes.png'))
 
 # animated modes hero
 gif = Image.open(os.path.join(SH, 'modes.gif'))
 frames = []
 base = None
 for fr in ImageSequence.Iterator(gif):
-    frames.append(feature('_tmp.png', 'Animated modes', ['Static, Scroll, Pulse,', 'Rainbow, dim or', 'redstone controlled'], fr.convert('RGB'), 690, os.path.join(SH, 'modes.png')).convert('RGB').quantize(colors=255, method=Image.Quantize.MEDIANCUT))
+    frames.append(feature('_tmp.png', 'Animated modes', ['Static, Scroll, Pulse,', 'Rainbow, Chase, Sparkle,', 'Strobe and Breathe'], fr.convert('RGB'), 690, os.path.join(SH, 'modes.png')).convert('RGB').quantize(colors=255, method=Image.Quantize.MEDIANCUT))
 os.remove(os.path.join(OUT, '_tmp.png'))
 frames[0].save(os.path.join(OUT, '05-modes.gif'), save_all=True, append_images=frames[1:], duration=150, loop=0)
 print('ok')
